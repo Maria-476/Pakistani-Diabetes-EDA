@@ -1,5 +1,8 @@
 # Pakistani Diabetes Dataset — EDA & Classification
 
+## 🚀 Live Demo
+👉 [Click here to try the app](https://pakistani-diabetes-eda-mebhfrxbvqsgojruuiwxag.streamlit.app)
+
 Exploratory Data Analysis and Logistic Regression classification on a clinical diabetes dataset from Pakistan.
 
 ---
