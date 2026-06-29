@@ -65,102 +65,113 @@ st.markdown('<div class="small-text">Smart lifestyle-based diabetes screening fo
 
 st.markdown("---")
 
-
-# Sidebar
+# --- SIDEBAR (Inputs & Validation Footer) ---
 with st.sidebar:
     st.header("👤 Personal Info")
 
     age = st.slider("Age", 10, 100, 30)
-
     gender = st.selectbox("Gender", ["Female", "Male"])
-
     weight = st.slider("Weight (kg)", 20, 200, 70)
-
     height_cm = st.slider("Height (cm)", 100, 220, 165)
 
+    # BMI Auto-Handling (Calculated automatically, no manual input needed)
     bmi = round(weight / ((height_cm / 100) ** 2), 2)
-
     st.metric("Calculated BMI", bmi)
+    
+    # 📝 100% Personal Validation Footer
+    st.markdown("---")
+    st.markdown("🧑‍💻 **Developed by Maria Anwar**")
+    st.markdown("🤖 *Powered by Machine Learning*")
 
 
-# Main layout
-col1, col2 = st.columns(2)
+# --- TABS CREATION (Calculator & Data Story) ---
+tab1, tab2 = st.tabs(["📊 Risk Calculator", "📈 Data Insights & Story"])
 
-with col1:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("❤️ Blood Pressure")
-    systolic = st.slider("Systolic BP", 80, 250, 120)
-    diastolic = st.slider("Diastolic BP", 40, 150, 80)
-    st.markdown('</div>', unsafe_allow_html=True)
+# --- TAB 1: CALCULATOR ---
+with tab1:
+    col1, col2 = st.columns(2)
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("🧬 Family History")
-    family_history = st.selectbox("Family History of Diabetes?", ["No", "Yes"])
-    st.markdown('</div>', unsafe_allow_html=True)
+    with col1:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("❤️ Blood Pressure")
+        systolic = st.slider("Systolic BP", 80, 250, 120)
+        diastolic = st.slider("Diastolic BP", 40, 150, 80)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-with col2:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("🏃 Lifestyle")
-    exercise = st.slider("Daily Exercise (minutes)", 0, 180, 20)
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("🧬 Family History")
+        family_history = st.selectbox("Family History of Diabetes?", ["No", "Yes"])
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("💧 Symptoms")
-    thirst = st.selectbox("Excessive Thirst?", ["No", "Yes"])
-    urination = st.selectbox("Frequent Urination?", ["No", "Yes"])
-    st.markdown('</div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("🏃 Lifestyle")
+        exercise = st.slider("Daily Exercise (minutes)", 0, 180, 20)
+        st.markdown('</div>', unsafe_allow_html=True)
 
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.subheader("💧 Symptoms")
+        thirst = st.selectbox("Excessive Thirst?", ["No", "Yes"])
+        urination = st.selectbox("Frequent Urination?", ["No", "Yes"])
+        st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("---")
+    st.markdown("---")
 
+    # Prediction Logic
+    if st.button("🔍 Check My Diabetes Risk"):
+        gender_enc = 1 if gender == "Male" else 0
+        family_history_enc = 1 if family_history == "Yes" else 0
+        thirst_enc = 1 if thirst == "Yes" else 0
+        urination_enc = 1 if urination == "Yes" else 0
 
-# Prediction
-if st.button("🔍 Check My Diabetes Risk"):
+        cont_cols = ['Age', 'Weight_kg', 'BMI', 'Systolic_BP', 'Diastolic_BP', 'Exercise_Duration']
+        cont_values = pd.DataFrame([[age, weight, bmi, systolic, diastolic, exercise]], columns=cont_cols)
+        cont_scaled = scaler.transform(cont_values)
 
-    # Encode categoricals
-    gender_enc = 1 if gender == "Male" else 0
-    family_history_enc = 1 if family_history == "Yes" else 0
-    thirst_enc = 1 if thirst == "Yes" else 0
-    urination_enc = 1 if urination == "Yes" else 0
+        input_data = pd.DataFrame([{
+            'Age':                          cont_scaled[0][0],
+            'Gender':                       gender_enc,
+            'Weight_kg':                    cont_scaled[0][1],
+            'BMI':                          cont_scaled[0][2],
+            'Systolic_BP':                  cont_scaled[0][3],
+            'Diastolic_BP':                 cont_scaled[0][4],
+            'Family_History':               family_history_enc,
+            'Exercise_Duration':            cont_scaled[0][5],
+            'Polydipsia_Excessive_Thirst':  thirst_enc,
+            'Polyuria_Frequent_Urination':  urination_enc
+        }])
 
-    # Scale continuous columns — names must match training exactly
-    cont_cols = ['Age', 'Weight_kg', 'BMI', 'Systolic_BP',
-                 'Diastolic_BP', 'Exercise_Duration']
+        prediction = model.predict(input_data)[0]
+        probability = model.predict_proba(input_data)[0][1]
 
-    cont_values = pd.DataFrame([[
-        age, weight, bmi, systolic, diastolic, exercise
-    ]], columns=cont_cols)
+        st.markdown("## 📊 Assessment Result")
+        st.progress(float(probability))
 
-    cont_scaled = scaler.transform(cont_values)
+        if prediction == 1:
+            st.error(f"⚠ High Risk Detected ({probability*100:.1f}%)")
+            st.info("Your inputs suggest an elevated diabetes risk. Consider consulting a healthcare professional for further testing.")
+        else:
+            st.success(f"✅ Low Risk ({probability*100:.1f}%)")
+            st.info("Your health indicators look stable. Maintain a healthy lifestyle and monitor regularly.")
 
-    # Build input — column names and order must match X_train exactly
-    input_data = pd.DataFrame([{
-        'Age':                          cont_scaled[0][0],
-        'Gender':                       gender_enc,
-        'Weight_kg':                    cont_scaled[0][1],
-        'BMI':                          cont_scaled[0][2],
-        'Systolic_BP':                  cont_scaled[0][3],
-        'Diastolic_BP':                 cont_scaled[0][4],
-        'Family_History':               family_history_enc,
-        'Exercise_Duration':            cont_scaled[0][5],
-        'Polydipsia_Excessive_Thirst':  thirst_enc,
-        'Polyuria_Frequent_Urination':  urination_enc
-    }])
+# --- TAB 2: DATA INSIGHTS & STORY ---
+with tab2:
+    st.subheader("💡 How the Model Makes Decisions")
+    st.markdown("""
+    This model was intentionally designed to be **non-invasive**, dropping clinical laboratory tests like HbA1c or Random Blood Sugar so everyday users can easily self-screen at home.
+    """)
+    
+    col_img1, col_img2 = st.columns(2)
+    
+    with col_img1:
+        st.markdown("**1. Feature Importance (Coefficients)**")
+        # Ensure these images are in your repository root or images folder
+        st.image("plots/feature_coefficients_m2.png", caption="Model Logic: Excessive Thirst and Age are the biggest risk drivers, while Exercise protects against it.")
+        
+    with col_img2:
+        st.markdown("**2. Model Validation (Confusion Matrix)**")
+        st.image("plots/confusion_matrix_m2.png", caption="Model Performance: Out of 182 test cases, the model only missed 4 diabetic patients, achieving an outstanding 96% Recall rate.")
 
-    prediction = model.predict(input_data)[0]
-    probability = model.predict_proba(input_data)[0][1]
-
-    st.markdown("## 📊 Assessment Result")
-    st.progress(float(probability))
-
-    if prediction == 1:
-        st.error(f"⚠ High Risk Detected ({probability*100:.1f}%)")
-        st.info("Your inputs suggest an elevated diabetes risk. "
-                "Consider consulting a healthcare professional for further testing.")
-    else:
-        st.success(f"✅ Low Risk ({probability*100:.1f}%)")
-        st.info("Your health indicators look stable. "
-                "Maintain a healthy lifestyle and monitor regularly.")
 
 st.markdown("---")
 st.caption("⚠ This tool is for educational screening only and not a medical diagnosis.")
